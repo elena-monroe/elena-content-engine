@@ -1,0 +1,41 @@
+name: Content Scout
+
+on:
+  # Both UTC hours cover 8 AM Pacific across daylight saving time. The script
+  # performs the final America/Los_Angeles time check.
+  schedule:
+    - cron: "0 15,16 * * 1"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Preview topics without creating Notion pages"
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  scout:
+    runs-on: ubuntu-latest
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+      GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+      CONTENT_OPPORTUNITIES_DATA_SOURCE_ID: 3d70d1ff-9a3a-80b0-a8cb-000bd584fdcb
+      SEARCH_CONSOLE_SITE_URL: sc-domain:elenamonroephotography.com
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Run scheduled Content Scout
+        if: github.event_name == 'schedule'
+        run: python -m src.content_scout --enforce-schedule
+      - name: Run Content Scout manually
+        if: github.event_name == 'workflow_dispatch'
+        run: >-
+          python -m src.content_scout
+          ${{ inputs.dry_run != false && '--dry-run' || '' }}
